@@ -42,6 +42,8 @@
             width: 100%;
         }
     </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
 </head>
 
 <body>
@@ -130,18 +132,28 @@
                     value="{{ old('codigo_dactilar') }}" style="text-transform: uppercase;">
             </div>
 
-            <p> <strong>Recuerda verificar que tu correo sea válido ya que el sistema solo permite el registro una sola vez. </strong></p>
+            <p> <strong>Recuerda verificar que tu correo sea válido ya que el sistema solo permite el registro una sola
+                    vez. </strong></p>
             <div class="mb-3">
                 <label for="correo_electronico_principal" class="form-label">Correo Electrónico *</label>
-                <input type="email" id="correo_electronico_principal" name="correo" class="form-control"
-                    value="{{ old('correo') }}">
+                <input type="text" id="correo_electronico_principal" name="correo" class="form-control"
+                    value="{{ old('correo') }}" pattern="^[^\s,]+@[^\s,]+\.[^\s,]+$"
+                    title="El correo no debe contener espacios ni comas."
+                    oninvalid="this.setCustomValidity('El correo no debe contener espacios ni comas.')"
+                    oninput="this.setCustomValidity('')">
             </div>
 
-            <div class="mb-4">
-                <label for="fecha_expiracion" class="form-label">Fecha de Expiración de la Cédula *</label>
-                <input type="date" id="fecha_expiracion" name="fecha_expiracion" class="form-control"
-                    value="{{ old('fecha_expiracion') }}">
-            </div>
+            <div class="mb-3">
+              <label for="fecha_expiracion" class="form-label">Fecha de Expiración de la Cédula *</label>
+              <input type="date"
+                     id="fecha_expiracion"
+                     name="fecha_expiracion"
+                     class="form-control"
+                     value="{{ old('fecha_expiracion') }}"
+                     lang="es"
+                     placeholder="aaaa-mm-dd">
+          </div>
+
 
             <!-- Botón para ver política -->
             <div class="mb-3">
@@ -229,34 +241,35 @@
 
             <!-- Checkbox obligatorio -->
             <div class="form-check mb-4">
-                <input class="form-check-input" type="checkbox" name="acepta_politica" id="acepta_politica" required>
+                <input class="form-check-input" type="checkbox" name="acepta_politica" id="acepta_politica" required
+                    oninvalid="this.setCustomValidity('Debes aceptar la Política de Privacidad y los Términos de Uso.')"
+                    oninput="this.setCustomValidity('')">
                 <label class="form-check-label" for="acepta_politica">
                     He leído y acepto la Política de Privacidad y los Términos de Uso
                 </label>
             </div>
+
             <button type="submit" class="btn btn-primary">Enviar</button>
             <div class="mb-4">
-              <p><strong>Si tienes alguna duda, no dudes en contactarnos a través de nuestros canales oficiales:</strong></p>
-              <ul class="list-unstyled mb-0">
-                <li>
-                  <a href="https://www.facebook.com/EduSuperiorEC"
-                     target="_blank" rel="noopener">
-                    Facebook: EduSuperiorEC
-                  </a>
-                </li>
-                <li>
-                  <a href="https://twitter.com/EduSuperiorEC"
-                     target="_blank" rel="noopener">
-                    X: EduSuperiorEC
-                  </a>
-                </li>
-                <li>
-                  <a href="https://www.instagram.com/EduSuperior.Ec"
-                     target="_blank" rel="noopener">
-                    Instagram: EduSuperior.Ec
-                  </a>
-                </li>
-              </ul>
+                <p><strong>Si tienes alguna duda, no dudes en contactarnos a través de nuestros canales
+                        oficiales:</strong></p>
+                <ul class="list-unstyled mb-0">
+                    <li>
+                        <a href="https://www.facebook.com/EduSuperiorEC" target="_blank" rel="noopener">
+                            Facebook: EduSuperiorEC
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://twitter.com/EduSuperiorEC" target="_blank" rel="noopener">
+                            X: EduSuperiorEC
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.instagram.com/EduSuperior.Ec" target="_blank" rel="noopener">
+                            Instagram: EduSuperior.Ec
+                        </a>
+                    </li>
+                </ul>
             </div>
 
         </form>
@@ -327,6 +340,17 @@
             });
         });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+    <script>
+      flatpickr("#fecha_expiracion", {
+        locale: "es",
+        dateFormat: "Y-m-d", //  Formato año-mes-día
+        altInput: true,
+        altFormat: "Y-m-d"
+      });
+    </script>
+
 </body>
 
 </html>

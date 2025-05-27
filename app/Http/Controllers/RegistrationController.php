@@ -22,9 +22,17 @@ class RegistrationController extends Controller
             'cedula'            => 'required',
             'nombres_apellidos' => 'required|string',
             'codigo_dactilar'   => 'required|string',
-            'correo'            => 'required|email',
+            'correo' => [
+                'required',
+                'email',
+                'regex:/^[^\s,]+@[^\s,]+\.[^\s,]+$/'
+            ],
             'fecha_expiracion'  => 'required|date',
-        ], [], [
+        ], [
+            'correo.regex'    => 'El correo no debe contener espacios ni comas.',
+            'correo.email'    => 'El correo debe tener un formato válido.',
+            'correo.required' => 'El campo correo electrónico es obligatorio.',
+        ], [
             'tipo_documento'    => 'tipo de documento',
             'cedula'            => 'cédula',
             'nombres_apellidos' => 'apellidos y nombres',
@@ -33,9 +41,11 @@ class RegistrationController extends Controller
             'fecha_expiracion'  => 'fecha de expiración',
         ]);
 
+
         if ($request->tipo_documento === 'cedula') {
             $codigoDinardap = session('dinardap_codigo_dactilar');
             $fechaDinardap  = session('dinardap_fecha_expiracion');
+           // dd($codigoDinardap, $fechaDinardap);
 
 
             $fechaDinardapFormateada = $fechaDinardap
