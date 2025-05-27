@@ -6,36 +6,67 @@ use Illuminate\Http\Request;
 use App\Models\Contact;
 use RicorocksDigitalAgency\Soap\Facades\Soap;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class RegistrationController extends Controller
 {
     public function create()
     {
-        return view('create');  // tu vista con el formulario
+        return view('create');
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'tipo_documento'   => 'required|string', // Puedes agregar más tipos si es necesario
-            'cedula'           => 'required',
+            'tipo_documento'    => 'required|string',
+            'cedula'            => 'required',
             'nombres_apellidos' => 'required|string',
-            'codigo_dactilar'  => 'required|string',
-            'correo'           => 'required|email',
-            'fecha_expiracion' => 'required|date',
+            'codigo_dactilar'   => 'required|string',
+            'correo'            => 'required|email',
+            'fecha_expiracion'  => 'required|date',
+        ], [], [
+            'tipo_documento'    => 'tipo de documento',
+            'cedula'            => 'cédula',
+            'nombres_apellidos' => 'apellidos y nombres',
+            'codigo_dactilar'   => 'código dactilar',
+            'correo'            => 'correo electrónico',
+            'fecha_expiracion'  => 'fecha de expiración',
         ]);
 
-        if (Contact::where('cedula', $request->cedula)->exists()) {
-            return redirect()->back()->with('error', 'Esta número de identificación ya fue registrado anteriormente.');
+        if ($request->tipo_documento === 'cedula') {
+            $codigoDinardap = session('dinardap_codigo_dactilar');
+            $fechaDinardap  = session('dinardap_fecha_expiracion');
+
+
+            $fechaDinardapFormateada = $fechaDinardap
+                ? Carbon::createFromFormat('d/m/Y', $fechaDinardap)->format('Y-m-d')
+                : null;
+
+            if (
+                !$codigoDinardap || !$fechaDinardapFormateada ||
+                $codigoDinardap !== $request->codigo_dactilar ||
+                $fechaDinardapFormateada !== $request->fecha_expiracion
+            ) {
+                return redirect()->back()
+                    ->with('error', 'El código dactilar o la fecha de expiración no coinciden con los datos del Registro Civil.')
+                    ->withInput();
+            }
         }
 
-        // Verificar si ya existe el mismo correo
+        if (Contact::where('cedula', $request->cedula)->exists()) {
+            return redirect()->back()
+                ->with('error', '⚠️ Esta número de identificación ya fue registrada anteriormente.')
+                ->withInput();
+        }
+
         if (Contact::where('correo', $request->correo)->exists()) {
-            return redirect()->back()->with('error', 'Este correo ya está registrado con número de identificación.');
+            return redirect()->back()
+                ->with('error', '⚠️ Este correo ya está registrado con otro número de identificación.')
+                ->withInput();
         }
 
         Contact::create([
-            'tipo_documento'    => $request->tipo_documento, // Por defecto 'cedula', pero puedes cambiarlo
+            'tipo_documento'    => $request->tipo_documento,
             'cedula'            => $request->cedula,
             'nombres_apellidos' => $request->nombres_apellidos,
             'codigo_dactilar'   => $request->codigo_dactilar,
@@ -43,16 +74,13 @@ class RegistrationController extends Controller
             'fecha_expiracion'  => $request->fecha_expiracion,
         ]);
 
+        session()->forget(['dinardap_codigo_dactilar', 'dinardap_fecha_expiracion']);
+
         return redirect()->back()->with('success', '✅ Datos guardados exitosamente.');
     }
 
-
-    /**
-     * AJAX: recibe { cedula }, llama a getFichaGeneral y devuelve JSON.
-     */
     public function consultarCedula(Request $request)
     {
-        // 1) Validación básica
         $request->validate([
             'cedula' => ['required', 'digits:10']
         ]);
@@ -60,7 +88,6 @@ class RegistrationController extends Controller
         $cedula = $request->cedula;
 
         try {
-            // 2) Configuración SSL (si hace falta)
             $context = stream_context_create([
                 'ssl' => [
                     'verify_peer'       => false,
@@ -69,7 +96,6 @@ class RegistrationController extends Controller
                 ],
             ]);
 
-            // 3) Llamada SOAP a getFichaGeneral
             $response = Soap::to(config('soap.dinardap_wsdl'))
                 ->withBasicAuth(
                     config('soap.dinardap_user'),
@@ -81,21 +107,17 @@ class RegistrationController extends Controller
                     'codigoPaquete'        => '471',
                 ]);
 
-            // 4) Parseo de la respuesta
-            // Aquí debes inspeccionar exactamente tu $response.
-            // Por ejemplo, si vienen así:
-            // $response->return->instituciones->datosPrincipales->registros
-            // Y suponiendo que:
-            //    registros[0]->valor = cédula
-            //    registros[1]->valor = nombre completo
             $body = $response->response;
-            $registros = $body->return->instituciones->datosPrincipales->registros;
-            foreach ($registros as $registro) {
-                if (isset($registro->campo) && strtolower($registro->campo) === 'nombre') {
-                    $nombre = $registro->valor;
-                    break;
-                }
-            }
+            $registros = $body->return->instituciones->datosPrincipales->registros ?? [];
+
+            $nombre = collect($registros)->firstWhere('campo', 'nombre')->valor ?? null;
+            $codigoDactilar = collect($registros)->firstWhere('campo', 'individualDactilar')->valor ?? null;
+            $fechaExpiracion = collect($registros)->firstWhere('campo', 'fechaExpiracion')->valor ?? null;
+
+            session([
+                'dinardap_codigo_dactilar'  => $codigoDactilar,
+                'dinardap_fecha_expiracion' => $fechaExpiracion,
+            ]);
 
             if (! $nombre) {
                 return response()->json([
@@ -108,6 +130,7 @@ class RegistrationController extends Controller
                 'nombre' => $nombre,
                 'cedula' => $cedula
             ], 200);
+
         } catch (\Throwable $e) {
             Log::error("❌ Dinardap getFichaGeneral error: " . $e->getMessage());
             Log::error("❌ Exception trace: " . $e->getTraceAsString());
@@ -118,6 +141,4 @@ class RegistrationController extends Controller
             ], 200);
         }
     }
-
-    // ... tu función validarCedulaIdentidad si aún la usas ...
 }
