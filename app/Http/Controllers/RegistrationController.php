@@ -42,20 +42,23 @@ class RegistrationController extends Controller
         ]);
 
 
+
         if ($request->tipo_documento === 'cedula') {
             $codigoDinardap = session('dinardap_codigo_dactilar');
             $fechaDinardap  = session('dinardap_fecha_expiracion');
-           // dd($codigoDinardap, $fechaDinardap);
+            // dd($codigoDinardap, $fechaDinardap);
 
 
             $fechaDinardapFormateada = $fechaDinardap
-                ? Carbon::createFromFormat('d/m/Y', $fechaDinardap)->format('Y-m-d')
+                ? Carbon::createFromFormat('d/m/Y', $fechaDinardap)->startOfDay()
                 : null;
+
+            $fechaFormulario = Carbon::parse($request->fecha_expiracion)->startOfDay();
 
             if (
                 !$codigoDinardap || !$fechaDinardapFormateada ||
-                $codigoDinardap !== $request->codigo_dactilar ||
-                $fechaDinardapFormateada !== $request->fecha_expiracion
+                $codigoDinardap !== strtoupper($request->codigo_dactilar) || // mayúsculas
+                !$fechaDinardapFormateada->equalTo($fechaFormulario)
             ) {
                 return redirect()->back()
                     ->with('error', 'El código dactilar o la fecha de expiración no coinciden con los datos del Registro Civil.')
@@ -65,13 +68,13 @@ class RegistrationController extends Controller
 
         if (Contact::where('cedula', $request->cedula)->exists()) {
             return redirect()->back()
-                ->with('error', '⚠️ Esta número de identificación ya fue registrada anteriormente.')
+                ->with('error', 'Este número de identificación ya fue registrado anteriormente.')
                 ->withInput();
         }
 
         if (Contact::where('correo', $request->correo)->exists()) {
             return redirect()->back()
-                ->with('error', '⚠️ Este correo ya está registrado con otro número de identificación.')
+                ->with('error', 'Este correo ya está registrado con otro número de identificación.')
                 ->withInput();
         }
 
@@ -140,7 +143,6 @@ class RegistrationController extends Controller
                 'nombre' => $nombre,
                 'cedula' => $cedula
             ], 200);
-
         } catch (\Throwable $e) {
             Log::error("❌ Dinardap getFichaGeneral error: " . $e->getMessage());
             Log::error("❌ Exception trace: " . $e->getTraceAsString());
