@@ -41,28 +41,26 @@ class RegistrationController extends Controller
             'fecha_expiracion'  => 'fecha de expiración',
         ]);
 
-
-
         if ($request->tipo_documento === 'cedula') {
             $codigoDinardap = session('dinardap_codigo_dactilar');
             $fechaDinardap  = session('dinardap_fecha_expiracion');
-            // dd($codigoDinardap, $fechaDinardap);
 
+            // Solo validar si Dinardap devolvió ambos datos
+            if (!empty($fechaDinardap) && !empty($codigoDinardap)) {
+                $fechaDinardapFormateada = Carbon::createFromFormat('d/m/Y', $fechaDinardap)->startOfDay();
+                $fechaFormulario = Carbon::parse($request->fecha_expiracion)->startOfDay();
 
-            $fechaDinardapFormateada = $fechaDinardap
-                ? Carbon::createFromFormat('d/m/Y', $fechaDinardap)->startOfDay()
-                : null;
-
-            $fechaFormulario = Carbon::parse($request->fecha_expiracion)->startOfDay();
-
-            if (
-                !$codigoDinardap || !$fechaDinardapFormateada ||
-                $codigoDinardap !== strtoupper($request->codigo_dactilar) || // mayúsculas
-                !$fechaDinardapFormateada->equalTo($fechaFormulario)
-            ) {
-                return redirect()->back()
-                    ->with('error', 'El código dactilar o la fecha de expiración no coinciden con los datos del Registro Civil.')
-                    ->withInput();
+                if (
+                    $codigoDinardap !== strtoupper($request->codigo_dactilar) ||
+                    !$fechaDinardapFormateada->equalTo($fechaFormulario)
+                ) {
+                    return redirect()->back()
+                        ->with('error', 'El código dactilar o la fecha de expiración no coinciden con los datos del Registro Civil.')
+                        ->withInput();
+                }
+            } else {
+                // No hay datos suficientes para validar contra Dinardap
+                Log::info("🟡 No se realizó validación Dinardap para la cédula: " . $request->cedula);
             }
         }
 
